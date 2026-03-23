@@ -1,0 +1,11 @@
+node_modules/
+.claude/
+*.jpg
+*.png
+bunny-blast/
+icons/
+play-store-screenshots.skill
+tesla-game-icon.html
+marketpulse.html
+package-lock.json
+package.json
