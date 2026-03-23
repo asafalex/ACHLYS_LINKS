@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor - ACH</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0f0f0f;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-input: #1a1a2e;
+      --accent: #e94560;
+      --accent-hover: #ff6b81;
+      --accent2: #4da6ff;
+      --text-primary: #eee;
+      --text-secondary: #a0a0b0;
+      --border: #2a2a4a;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .navbar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .navbar-brand {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .navbar-user {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .navbar-user span {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .btn-logout {
+      padding: 8px 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .monitor-link {
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.17em;
+      letter-spacing: 1px;
+    }
+
+    .main-content {
+      padding: 28px;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">ACH Link Generator</a>
+    <div class="navbar-user">
+      <h3><a href="check.html" class="monitor-link">MONITOR</a></h3>
+      <span id="userEmail"></span>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <!-- Monitor content will go here -->
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    const SUPABASE_URL = 'https://exrmnluywpzbhqjngjfz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4cm1ubHV5d3B6Ymhxam5namZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzY2MjMsImV4cCI6MjA4OTg1MjYyM30.DNqpguiybLmt0Oz8PMGRcx_U6dMpAMt7fkdKSDal5d8';
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function checkAuth() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        window.location.href = 'index.html';
+        return;
+      }
+      document.getElementById('userEmail').textContent = session.user.email;
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+
+    checkAuth();
+  </script>
+
+</body>
+</html>
