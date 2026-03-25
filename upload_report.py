@@ -4,11 +4,19 @@ Reads the daily Excel file from OneDrive and uploads to Supabase.
 Run daily via Windows Task Scheduler or manually.
 """
 
+import base64
 import os
 import sys
+import tempfile
 from datetime import date
 from openpyxl import load_workbook
 from supabase import create_client
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
 
 # ===== CONFIG =====
 SUPABASE_URL = "https://exrmnluywpzbhqjngjfz.supabase.co"
@@ -16,6 +24,82 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 # OneDrive path - adjust if needed
 ONEDRIVE_PATH = os.path.expanduser(r"~\OneDrive - Mobile Brain\report_ai_mobile\FINAL")
+
+# SharePoint shared folder link (fallback when local file is locked)
+SHAREPOINT_FOLDER_URL = "https://mobilebrain-my.sharepoint.com/:f:/g/personal/asaf_mobile-brain_net/IgDrqGhW4YQUQZt2XzufgeKbAcjdlOg7UTRGU6045f6luas?e=2egc1d"
+
+# Azure AD credentials for Graph API (set these as environment variables or fill directly)
+# To register: portal.azure.com → App registrations → New registration
+# Permissions needed: Files.Read.All (Application)
+AZURE_TENANT_ID = os.environ.get("AZURE_TENANT_ID", "")
+AZURE_CLIENT_ID = os.environ.get("AZURE_CLIENT_ID", "")
+AZURE_CLIENT_SECRET = os.environ.get("AZURE_CLIENT_SECRET", "")
+
+
+def get_graph_token():
+    """Get Microsoft Graph API token using client credentials flow."""
+    if not (AZURE_TENANT_ID and AZURE_CLIENT_ID and AZURE_CLIENT_SECRET):
+        return None
+    token_url = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}/oauth2/v2.0/token"
+    resp = requests.post(token_url, data={
+        "grant_type": "client_credentials",
+        "client_id": AZURE_CLIENT_ID,
+        "client_secret": AZURE_CLIENT_SECRET,
+        "scope": "https://graph.microsoft.com/.default",
+    }, timeout=30)
+    if resp.status_code == 200:
+        return resp.json().get("access_token")
+    print(f"WARNING: Failed to get Graph token: {resp.status_code} {resp.text[:200]}")
+    return None
+
+
+def download_from_sharepoint(filename):
+    """Download a file from the shared SharePoint folder via Microsoft Graph API."""
+    if not HAS_REQUESTS:
+        print("WARNING: 'requests' library not installed, cannot use SharePoint fallback")
+        return None
+
+    # Encode the sharing URL for Graph API
+    encoded = base64.b64encode(SHAREPOINT_FOLDER_URL.encode()).decode()
+    encoded = encoded.rstrip("=").replace("/", "_").replace("+", "-")
+    shares_token = f"u!{encoded}"
+
+    api_url = f"https://graph.microsoft.com/v1.0/shares/{shares_token}/root/children"
+    print(f"Fetching SharePoint folder listing...")
+
+    headers = {}
+    token = get_graph_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    else:
+        print("WARNING: No Azure credentials configured, trying anonymous access...")
+
+    resp = requests.get(api_url, headers=headers, timeout=30)
+
+    if resp.status_code != 200:
+        print(f"WARNING: SharePoint API returned {resp.status_code}: {resp.text[:200]}")
+        return None
+
+    items = resp.json().get("value", [])
+    for item in items:
+        if item.get("name") == filename:
+            download_url = item.get("@microsoft.graph.downloadUrl")
+            if not download_url:
+                print("WARNING: No downloadUrl found for file")
+                return None
+            print(f"Downloading {filename} from SharePoint...")
+            file_resp = requests.get(download_url, timeout=60)
+            if file_resp.status_code != 200:
+                print(f"WARNING: Download failed with status {file_resp.status_code}")
+                return None
+            tmp_path = os.path.join(tempfile.gettempdir(), filename)
+            with open(tmp_path, "wb") as f:
+                f.write(file_resp.content)
+            print(f"Downloaded to temp: {tmp_path}")
+            return tmp_path
+
+    print(f"WARNING: '{filename}' not found in SharePoint folder")
+    return None
 
 # Column mapping (Excel header -> DB column)
 COL_MAP = {
@@ -102,8 +186,10 @@ def parse_excel(filepath):
                 started = True
             continue
 
-        # Skip empty rows
+        # Skip empty rows and TOTAL row
         if not row or not any(row):
+            continue
+        if row[0] and str(row[0]).strip().upper() == 'TOTAL':
             continue
 
         record = {"report_date": date.today().isoformat(), "subtitle": subtitle}
@@ -167,15 +253,45 @@ def main():
         if not os.path.exists(filepath):
             print(f"ERROR: File not found: {filepath}")
             return
+        print(f"File: {filepath}")
+        print("Parsing Excel...")
+        rows, subtitle = parse_excel(filepath)
     else:
-        filepath = find_todays_file()
+        today_str = date.today().isoformat()
+        filename = f"ACHLYS_Summary_{today_str}.xlsx"
+
+        # 1st priority: SharePoint via Graph API
+        print("Trying SharePoint (primary)...")
+        filepath = download_from_sharepoint(filename)
+
+        if not filepath:
+            # 2nd priority: robocopy from OneDrive to temp
+            local_path = find_todays_file()
+            if local_path:
+                print(f"WARNING: SharePoint unavailable. Trying robocopy from OneDrive...")
+                tmp_dir = tempfile.gettempdir()
+                tmp_path = os.path.join(tmp_dir, filename)
+                result = __import__('subprocess').run(
+                    ['robocopy', os.path.dirname(local_path), tmp_dir, filename, '/R:0', '/W:0'],
+                    capture_output=True, timeout=30
+                )
+                if os.path.exists(tmp_path):
+                    print(f"Copied to temp: {tmp_path}")
+                    filepath = tmp_path
+                else:
+                    print(f"WARNING: robocopy failed (exit {result.returncode}). Falling back to direct OneDrive read...")
+                    filepath = local_path
+            else:
+                print("ERROR: SharePoint unavailable and no local OneDrive file found")
+                return
+
         if not filepath:
             print("ERROR: No file found for today")
             return
 
-    print(f"File: {filepath}")
-    print("Parsing Excel...")
-    rows, subtitle = parse_excel(filepath)
+        print(f"File: {filepath}")
+        print("Parsing Excel...")
+        rows, subtitle = parse_excel(filepath)
 
     if not rows:
         print("ERROR: No data rows found")

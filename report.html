@@ -395,7 +395,9 @@
 
       // Convert to array format for the table renderer
       headers = [...DB_HEADERS];
-      allData = data.map(row => DB_COLS.map(col => row[col] ?? ''));
+      allData = data
+        .filter(row => row.month && String(row.month).toUpperCase() !== 'TOTAL')
+        .map(row => DB_COLS.map(col => row[col] ?? ''));
 
       buildStats();
       renderTable(allData);
