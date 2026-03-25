@@ -285,9 +285,13 @@
     <div class="report-header">
       <div>
         <h1>ACHLYS Daily Summary</h1>
-        <div class="subtitle" id="reportSubtitle">Upload today's Excel file to view the report</div>
+        <div class="subtitle" id="reportSubtitle">Loading report data...</div>
       </div>
       <div class="upload-area">
+        <select id="dateSelect" style="padding:10px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;cursor:pointer;" onchange="loadReportByDate()">
+          <option value="">-- Select Date --</option>
+        </select>
+        <button class="upload-btn" style="background:var(--accent2);" onclick="loadReportByDate()">Refresh</button>
         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload XLSX</button>
         <span class="file-name" id="fileName"></span>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
@@ -304,8 +308,8 @@
 
     <div class="table-container" id="tableContainer">
       <div class="empty-state" id="emptyState">
-        <h2>No Report Loaded</h2>
-        <p>Click "Upload XLSX" to load ACHLYS_Summary file</p>
+        <h2>Loading Report...</h2>
+        <p>Auto-loading from database. Or upload manually below.</p>
         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload XLSX</button>
       </div>
     </div>
@@ -331,11 +335,79 @@
 
     checkAuth();
 
-    // ===== EXCEL HANDLING =====
+    // ===== DATA STATE =====
     let allData = [];
     let headers = [];
     let sortCol = -1;
     let sortAsc = true;
+
+    // ===== AUTO-LOAD FROM SUPABASE =====
+    const DB_HEADERS = ['Month','Platform','Source','Campaign Name','GEO','Manager','Brand','Spend','Agency Fee','Real Spend','Installs','Clicks','Reg','FTD','eCPA','Income','Profit','ROI','Total Commission (ZAR)'];
+    const DB_COLS = ['month','platform','source','campaign_name','geo','manager','brand','spend','agency_fee','real_spend','installs','clicks','reg','ftd','ecpa','income','profit','roi','total_commission_zar'];
+
+    async function loadAvailableDates() {
+      const { data, error } = await sb.from('report_data')
+        .select('report_date')
+        .order('report_date', { ascending: false });
+      if (error || !data) return;
+
+      const uniqueDates = [...new Set(data.map(r => r.report_date))];
+      const sel = document.getElementById('dateSelect');
+      sel.innerHTML = '';
+      uniqueDates.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        if (i === 0) opt.selected = true;
+        sel.appendChild(opt);
+      });
+
+      // Auto-load latest date
+      if (uniqueDates.length > 0) {
+        loadReportByDate();
+      }
+    }
+
+    async function loadReportByDate() {
+      const selectedDate = document.getElementById('dateSelect').value;
+      if (!selectedDate) return;
+
+      document.getElementById('reportSubtitle').textContent = 'Loading...';
+
+      const { data, error } = await sb.from('report_data')
+        .select('*')
+        .eq('report_date', selectedDate)
+        .order('id', { ascending: true });
+
+      if (error) {
+        document.getElementById('reportSubtitle').textContent = 'Error loading: ' + error.message;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        document.getElementById('reportSubtitle').textContent = 'No data found for ' + selectedDate;
+        return;
+      }
+
+      // Set subtitle
+      const subtitle = data[0]?.subtitle || `Report for ${selectedDate}`;
+      document.getElementById('reportSubtitle').textContent = subtitle;
+
+      // Convert to array format for the table renderer
+      headers = [...DB_HEADERS];
+      allData = data.map(row => DB_COLS.map(col => row[col] ?? ''));
+
+      buildStats();
+      renderTable(allData);
+      document.getElementById('searchBox').style.display = 'flex';
+      const empty = document.getElementById('emptyState');
+      if (empty) empty.remove();
+    }
+
+    // Load on page ready
+    loadAvailableDates();
+
+    // ===== EXCEL HANDLING (manual upload fallback) =====
 
     function handleFile(e) {
       const file = e.target.files[0];
