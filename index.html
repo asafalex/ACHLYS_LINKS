@@ -967,6 +967,7 @@
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.autocomplete-wrapper')) {
         countryListEl.classList.remove('show');
+        linkCountryListEl.classList.remove('show');
       }
     });
 
