@@ -911,6 +911,59 @@
       countryListEl.classList.remove('show');
     }
 
+    // ============================================
+    // LINK FORM COUNTRY AUTOCOMPLETE
+    // ============================================
+    const linkCountryInput = document.getElementById('linkCountry');
+    const linkCountryCodeInput = document.getElementById('linkCountryCode');
+    const linkCountryListEl = document.getElementById('linkCountryList');
+    let lacIndex = -1;
+
+    linkCountryInput.addEventListener('input', () => {
+      const val = linkCountryInput.value.toLowerCase();
+      linkCountryCodeInput.value = '';
+      if (!val) { linkCountryListEl.classList.remove('show'); return; }
+      const matches = COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(val) || c.code.toLowerCase().includes(val)
+      ).slice(0, 10);
+      if (matches.length === 0) { linkCountryListEl.classList.remove('show'); return; }
+      lacIndex = -1;
+      linkCountryListEl.innerHTML = matches.map((c, i) =>
+        `<div class="autocomplete-item" data-code="${c.code}" data-name="${c.name}" data-idx="${i}">${c.name} (${c.code})</div>`
+      ).join('');
+      linkCountryListEl.classList.add('show');
+      linkCountryListEl.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => selectLinkCountry(item.dataset.code, item.dataset.name));
+      });
+    });
+
+    linkCountryInput.addEventListener('keydown', (e) => {
+      const items = linkCountryListEl.querySelectorAll('.autocomplete-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        lacIndex = Math.min(lacIndex + 1, items.length - 1);
+        items.forEach(i => i.classList.remove('active'));
+        items[lacIndex].classList.add('active');
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        lacIndex = Math.max(lacIndex - 1, 0);
+        items.forEach(i => i.classList.remove('active'));
+        items[lacIndex].classList.add('active');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (lacIndex >= 0 && items[lacIndex]) {
+          selectLinkCountry(items[lacIndex].dataset.code, items[lacIndex].dataset.name);
+        }
+      }
+    });
+
+    function selectLinkCountry(code, name) {
+      linkCountryInput.value = `${name} (${code})`;
+      linkCountryCodeInput.value = code;
+      linkCountryListEl.classList.remove('show');
+    }
+
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.autocomplete-wrapper')) {
         countryListEl.classList.remove('show');
