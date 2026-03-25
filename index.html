@@ -1167,7 +1167,21 @@
 
     async function removeItem(table, id, name) {
       if (!confirm(`Delete "${name}"?`)) return;
-      await sb.from(table).delete().eq('id', id);
+      // Map table to foreign key column in campaigns
+      const fkMap = { brands:'brand_id', platforms:'platform_id', sources:'source_id', owners:'owner_id' };
+      const fkCol = fkMap[table];
+      if (fkCol) {
+        // First delete campaigns referencing this item
+        await sb.from('campaigns').delete().eq(fkCol, id);
+      }
+      // Also handle links table for brands
+      if (table === 'brands') {
+        await sb.from('links').delete().eq('brand_id', id);
+      }
+      const { error } = await sb.from(table).delete().eq('id', id);
+      if (error) {
+        alert('Error deleting: ' + error.message);
+      }
       await loadAllLists();
     }
 
