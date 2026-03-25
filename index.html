@@ -977,10 +977,14 @@
     document.getElementById('generateForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const description = document.getElementById('linkDescription').value.trim();
+      const countryCode = document.getElementById('linkCountryCode').value.trim();
       const brandId = parseInt(document.getElementById('brandSelect').value);
       const btn = document.getElementById('generateBtn');
 
-      if (!description || !brandId) return;
+      if (!description || !countryCode || !brandId) {
+        if (!countryCode) alert('Please select a country');
+        return;
+      }
 
       btn.disabled = true;
       btn.innerHTML = 'Generating... <span class="spinner"></span>';
@@ -993,12 +997,15 @@
         return;
       }
 
+      const brandName = brands.find(b => b.id === brandId)?.name || '';
+      const fullCode = `${description}_${countryCode}_${brandName}_${code}`;
+
       const { error: linkErr } = await sb.from('links').insert({
         user_id: currentUser.id,
         user_email: currentUser.email,
         description,
         brand_id: brandId,
-        code
+        code: fullCode
       });
 
       btn.disabled = false;
@@ -1009,12 +1016,13 @@
         return;
       }
 
-      const brandName = brands.find(b => b.id === brandId)?.name || '';
-      document.getElementById('linkResultCode').textContent = code;
-      document.getElementById('linkResultMeta').textContent = `Brand: ${brandName} | ${description}`;
+      document.getElementById('linkResultCode').textContent = fullCode;
+      document.getElementById('linkResultMeta').textContent = `Brand: ${brandName} | Country: ${countryCode} | ${description}`;
       document.getElementById('linkResultBox').style.display = 'block';
 
       document.getElementById('linkDescription').value = '';
+      document.getElementById('linkCountry').value = '';
+      document.getElementById('linkCountryCode').value = '';
       document.getElementById('brandSelect').value = '';
 
       // Reload links so campaign form can use the new one
