@@ -549,7 +549,7 @@
             else             cls = 'num-zero';
 
             if (h === 'ROI') {
-              val = (n >= 0 ? '+' : '') + (n * 100).toFixed(1) + '%';
+              val = (n >= 0 ? '+' : '') + Math.trunc(n * 100) + '%';
             } else if (['Spend','Real Spend','Income','Profit','eCPA'].includes(h)) {
               val = (n >= 0 ? '+' : '') + formatNum(n);
             } else {
@@ -577,9 +577,9 @@
         if (DELTA_COLS.includes(h)) {
           const v = sumByKey(h);
           let fmt = '';
-          if (h === 'ROI') fmt = (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+          if (h === 'ROI') fmt = (v >= 0 ? '+' : '') + Math.trunc(v * 100) + '%';
           else if (['Spend','Real Spend','Income','Profit','eCPA'].includes(h)) fmt = (v >= 0 ? '+' : '') + formatNum(v);
-          else fmt = (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+          else fmt = (v >= 0 ? '+' : '') + Math.trunc(v).toLocaleString();
           const c = h === 'eCPA' ? 'var(--accent2)' : (v >= 0 ? 'var(--success)' : 'var(--accent)');
           html += `<td style="color:${c};font-weight:700;">${fmt}</td>`;
         } else {
@@ -621,13 +621,13 @@
 
     // ===== HELPERS =====
     function formatNum(n) {
-      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return Math.trunc(n).toLocaleString('en-US');
     }
     function fmtDelta(n) {
       return (n >= 0 ? '+' : '') + formatNum(n);
     }
     function fmtDeltaInt(n) {
-      return (n >= 0 ? '+' : '') + Math.round(n).toLocaleString();
+      return (n >= 0 ? '+' : '') + Math.trunc(n).toLocaleString();
     }
 
     // ===== INIT =====

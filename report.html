@@ -456,7 +456,7 @@
 
       const stats = [
         { label: 'Total Spend', value: formatNum(sum(spendIdx)), color: 'var(--accent2)' },
-        { label: 'Total FTD', value: Math.round(sum(ftdIdx)).toLocaleString(), color: 'var(--accent)' },
+        { label: 'Total FTD', value: Math.trunc(sum(ftdIdx)).toLocaleString(), color: 'var(--accent)' },
         { label: 'Total Income', value: formatNum(sum(incomeIdx)), color: 'var(--success)' },
         { label: 'Total Profit', value: formatNum(sum(profitIdx)), color: sum(profitIdx) >= 0 ? 'var(--success)' : 'var(--accent)' },
         { label: 'Rows', value: allData.length, color: 'var(--text-primary)' },
@@ -471,7 +471,7 @@
     }
 
     function formatNum(n) {
-      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return Math.trunc(n).toLocaleString('en-US');
     }
 
     function renderTable(data) {
@@ -503,7 +503,7 @@
             }
             // Format numbers
             if (h === 'ROI') {
-              val = (val * 100).toFixed(1) + '%';
+              val = Math.trunc(val * 100) + '%';
             } else if (['Spend', 'Real Spend', 'Income', 'Profit', 'eCPA'].includes(h)) {
               val = formatNum(val);
             } else if (Number.isInteger(val)) {
@@ -539,12 +539,12 @@
           const c = h === 'Profit' ? (v >= 0 ? 'var(--success)' : 'var(--accent)') : 'var(--accent2)';
           html += `<td style="color:${c};font-weight:700;">${formatNum(v)}</td>`;
         } else if (['Installs','Clicks','Reg','FTD'].includes(h)) {
-          html += `<td style="color:var(--accent2);font-weight:700;">${Math.round(sumBy(i)).toLocaleString()}</td>`;
+          html += `<td style="color:var(--accent2);font-weight:700;">${Math.trunc(sumBy(i)).toLocaleString()}</td>`;
         } else if (h === 'eCPA') {
           html += `<td style="color:var(--accent2);font-weight:700;">${formatNum(calcECPA)}</td>`;
         } else if (h === 'ROI') {
           const c = calcROI >= 0 ? 'var(--success)' : 'var(--accent)';
-          html += `<td style="color:${c};font-weight:700;">${(calcROI * 100).toFixed(1)}%</td>`;
+          html += `<td style="color:${c};font-weight:700;">${Math.trunc(calcROI * 100)}%</td>`;
         } else {
           html += '<td></td>';
         }
