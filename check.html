@@ -31,53 +31,58 @@
     .navbar {
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
-      padding: 14px 28px;
+      padding: 0 28px;
+      height: 56px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
     .navbar-brand {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 18px;
+      font-weight: 800;
       color: var(--accent);
       text-decoration: none;
+      letter-spacing: 1px;
     }
 
-    .navbar-user {
+    .nav-links { display: flex; gap: 2px; align-items: center; }
+
+    .nav-link {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
     }
 
-    .navbar-user span {
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
+    .nav-link:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .nav-link.active { background: rgba(77,166,255,0.12); color: var(--accent2); }
+    .nav-link svg { flex-shrink: 0; opacity: 0.85; }
+    .nav-link.active svg { opacity: 1; }
+
+    .navbar-right { display: flex; align-items: center; gap: 12px; }
+    .navbar-right span { color: var(--text-secondary); font-size: 13px; }
 
     .btn-logout {
-      padding: 8px 20px;
+      padding: 7px 16px;
       border: 1px solid var(--border);
       background: transparent;
       color: var(--text-secondary);
       border-radius: 8px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       transition: all 0.2s;
     }
 
-    .btn-logout:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .monitor-link {
-      color: white;
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 1.17em;
-      letter-spacing: 1px;
-    }
+    .btn-logout:hover { border-color: var(--accent); color: var(--accent); }
 
     .main-content {
       padding: 28px;
@@ -87,10 +92,22 @@
 <body>
 
   <nav class="navbar">
-    <a href="index.html" class="navbar-brand">ACH Link Generator</a>
-    <div class="navbar-user">
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/report.html"><font color="#4da6ff">REPORT</font></a></h3>
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/check.html"><font color="white">MONITOR</font></a></h3>
+    <a href="https://extraordinary-elf-0e2105.netlify.app/" class="navbar-brand">ACH</a>
+    <div class="nav-links">
+      <a href="https://extraordinary-elf-0e2105.netlify.app/report.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+        Report
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/check.html" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Monitor
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/YESTERDAY.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Yesterday
+      </a>
+    </div>
+    <div class="navbar-right">
       <span id="userEmail"></span>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>

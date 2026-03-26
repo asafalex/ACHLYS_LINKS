@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Report - ACH</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -33,45 +32,58 @@
     .navbar {
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
-      padding: 14px 28px;
+      padding: 0 28px;
+      height: 56px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
     .navbar-brand {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 18px;
+      font-weight: 800;
       color: var(--accent);
       text-decoration: none;
+      letter-spacing: 1px;
     }
 
-    .navbar-user {
+    .nav-links { display: flex; gap: 2px; align-items: center; }
+
+    .nav-link {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
     }
 
-    .navbar-user span {
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
+    .nav-link:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .nav-link.active { background: rgba(77,166,255,0.12); color: var(--accent2); }
+    .nav-link svg { flex-shrink: 0; opacity: 0.85; }
+    .nav-link.active svg { opacity: 1; }
+
+    .navbar-right { display: flex; align-items: center; gap: 12px; }
+    .navbar-right span { color: var(--text-secondary); font-size: 13px; }
 
     .btn-logout {
-      padding: 8px 20px;
+      padding: 7px 16px;
       border: 1px solid var(--border);
       background: transparent;
       color: var(--text-secondary);
       border-radius: 8px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       transition: all 0.2s;
     }
 
-    .btn-logout:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
+    .btn-logout:hover { border-color: var(--accent); color: var(--accent); }
 
     .main-content {
       padding: 24px;
@@ -272,11 +284,22 @@
 <body>
 
   <nav class="navbar">
-    <a href="https://extraordinary-elf-0e2105.netlify.app/" class="navbar-brand">ACH Link Generator</a>
-    <div class="navbar-user">
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/report.html"><font color="#4da6ff">REPORT</font></a></h3>
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/check.html"><font color="white">MONITOR</font></a></h3>
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/YESTERDAY.html"><font color="white">YESTERDAY</font></a></h3>
+    <a href="https://extraordinary-elf-0e2105.netlify.app/" class="navbar-brand">ACH</a>
+    <div class="nav-links">
+      <a href="https://extraordinary-elf-0e2105.netlify.app/report.html" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+        Report
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/check.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Monitor
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/YESTERDAY.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Yesterday
+      </a>
+    </div>
+    <div class="navbar-right">
       <span id="userEmail"></span>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -293,9 +316,6 @@
           <option value="">-- Select Date --</option>
         </select>
         <button class="upload-btn" style="background:var(--accent2);" onclick="loadReportByDate()">Refresh</button>
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload XLSX</button>
-        <span class="file-name" id="fileName"></span>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
       </div>
     </div>
 
@@ -310,8 +330,7 @@
     <div class="table-container" id="tableContainer">
       <div class="empty-state" id="emptyState">
         <h2>Loading Report...</h2>
-        <p>Auto-loading from database. Or upload manually below.</p>
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload XLSX</button>
+        <p>Auto-loading from database...</p>
       </div>
     </div>
   </div>
@@ -412,62 +431,6 @@
     // Load on page ready
     loadAvailableDates();
 
-    // ===== EXCEL HANDLING (manual upload fallback) =====
-
-    function handleFile(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      document.getElementById('fileName').textContent = file.name;
-
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        const data = new Uint8Array(ev.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-        // Find header row (row with "Month", "Platform", etc.)
-        let headerIdx = -1;
-        for (let i = 0; i < Math.min(json.length, 10); i++) {
-          const row = json[i];
-          if (row && row.some(c => typeof c === 'string' && (c === 'Month' || c === 'Platform' || c === 'Brand'))) {
-            headerIdx = i;
-            break;
-          }
-        }
-
-        if (headerIdx === -1) {
-          alert('Could not find header row in the file');
-          return;
-        }
-
-        // Extract title/subtitle from rows above header
-        let title = '';
-        let subtitle = '';
-        for (let i = 0; i < headerIdx; i++) {
-          const val = json[i]?.[0];
-          if (val && typeof val === 'string') {
-            if (val.includes('Summary')) title = val;
-            else if (val.includes('Exchange') || val.includes('Date')) subtitle = val;
-          }
-        }
-
-        if (title) document.getElementById('reportSubtitle').textContent = title;
-        if (subtitle) {
-          document.getElementById('reportSubtitle').textContent = subtitle;
-        }
-
-        headers = json[headerIdx].map(h => h || '');
-        allData = json.slice(headerIdx + 1).filter(row => row && row.length > 0 && row.some(c => c !== undefined && c !== ''));
-
-        buildStats();
-        renderTable(allData);
-        document.getElementById('searchBox').style.display = 'flex';
-        document.getElementById('emptyState')?.remove();
-      };
-      reader.readAsArrayBuffer(file);
-    }
 
     function buildStats() {
       const bar = document.getElementById('statsBar');
