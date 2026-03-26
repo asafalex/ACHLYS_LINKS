@@ -190,7 +190,7 @@
       text-align: left;
       color: var(--accent2);
       font-weight: 600;
-      font-size: 7px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border-bottom: 2px solid var(--border);
@@ -220,6 +220,12 @@
     .num-positive { color: var(--success); font-weight: 600; }
     .num-negative { color: var(--accent); font-weight: 600; }
     .num-zero     { color: var(--text-secondary); }
+
+    tfoot tr {
+      background: var(--bg-secondary);
+      border-top: 2px solid var(--border);
+    }
+    tfoot td { padding: 10px 14px; font-size: 12px; }
 
     .empty-state {
       text-align: center;
@@ -366,7 +372,8 @@
 
     // ===== CONFIG =====
     const HIDDEN_COLS = ['Agency Fee', 'Total Commission (ZAR)'];
-    const BRAND_ALIASES = { 'TICTACBETS': 'TT' };
+    const VALUE_ALIASES  = { 'TICTACBETS': 'TT', 'MOLOCO': 'MO' };
+    const HEADER_ALIASES = { 'Platform': 'PL' };
 
     const DB_HEADERS = ['Month','Platform','Source','Campaign Name','GEO','Manager','Brand','Spend','Agency Fee','Real Spend','Installs','Clicks','Reg','FTD','eCPA','Income','Profit','ROI','Total Commission (ZAR)'];
     const DB_COLS    = ['month','platform','source','campaign_name','geo','manager','brand','spend','agency_fee','real_spend','installs','clicks','reg','ftd','ecpa','income','profit','roi','total_commission_zar'];
@@ -463,7 +470,7 @@
             out[h] = tVal - pVal;
           } else {
             let v = tRow[col] ?? '';
-            if (h === 'Brand' && BRAND_ALIASES[v]) v = BRAND_ALIASES[v];
+            if (typeof v === 'string' && VALUE_ALIASES[v]) v = VALUE_ALIASES[v];
             out[h] = v;
           }
         });
@@ -521,7 +528,8 @@
         if (HIDDEN_COLS.includes(h)) return;
         const arrow = sortCol === i ? (sortAsc ? ' ▲' : ' ▼') : '';
         const isDelta = DELTA_COLS.includes(h);
-        const label = isDelta ? `Δ ${h}` : h;
+        const baseLabel = HEADER_ALIASES[h] || h;
+        const label = isDelta ? `Δ ${baseLabel}` : baseLabel;
         html += `<th onclick="sortTable(${i})">${label}<span class="sort-arrow">${arrow}</span></th>`;
       });
       html += '</tr></thead><tbody>';
@@ -554,7 +562,31 @@
         html += '</tr>';
       });
 
-      html += '</tbody></table>';
+      // ===== SUMMARY ROW =====
+      const sumByKey = (key) => data.reduce((s, r) => s + (parseFloat(r[key]) || 0), 0);
+      const totSp = sumByKey('Spend'), totFT = sumByKey('FTD'), totIn = sumByKey('Income');
+
+      html += '</tbody><tfoot><tr>';
+      let isFirstSummary = true;
+      DB_HEADERS.forEach((h) => {
+        if (HIDDEN_COLS.includes(h)) return;
+        if (isFirstSummary) {
+          html += `<td style="color:var(--accent2);font-weight:800;font-size:11px;letter-spacing:0.5px;">Σ TOTAL</td>`;
+          isFirstSummary = false; return;
+        }
+        if (DELTA_COLS.includes(h)) {
+          const v = sumByKey(h);
+          let fmt = '';
+          if (h === 'ROI') fmt = (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+          else if (['Spend','Real Spend','Income','Profit','eCPA'].includes(h)) fmt = (v >= 0 ? '+' : '') + formatNum(v);
+          else fmt = (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+          const c = h === 'eCPA' ? 'var(--accent2)' : (v >= 0 ? 'var(--success)' : 'var(--accent)');
+          html += `<td style="color:${c};font-weight:700;">${fmt}</td>`;
+        } else {
+          html += '<td></td>';
+        }
+      });
+      html += '</tr></tfoot></table>';
       container.innerHTML = html;
     }
 
