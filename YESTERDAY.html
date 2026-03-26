@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Report - ACH</title>
+  <title>Yesterday Delta - ACH</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -101,6 +100,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .upload-btn {
@@ -119,13 +119,14 @@
       background: var(--accent-hover);
     }
 
-    .file-name {
-      color: var(--text-secondary);
-      font-size: 13px;
-    }
-
-    #fileInput {
-      display: none;
+    select {
+      padding: 10px 16px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
     }
 
     .search-box {
@@ -184,9 +185,7 @@
       user-select: none;
     }
 
-    th:hover {
-      color: var(--accent);
-    }
+    th:hover { color: var(--accent); }
 
     th .sort-arrow {
       margin-left: 4px;
@@ -203,12 +202,11 @@
       background: rgba(77, 166, 255, 0.05);
     }
 
-    tr:last-child td {
-      border-bottom: none;
-    }
+    tr:last-child td { border-bottom: none; }
 
-    .num-positive { color: var(--success); }
-    .num-negative { color: var(--accent); }
+    .num-positive { color: var(--success); font-weight: 600; }
+    .num-negative { color: var(--accent); font-weight: 600; }
+    .num-zero     { color: var(--text-secondary); }
 
     .empty-state {
       text-align: center;
@@ -239,7 +237,7 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 14px 20px;
-      min-width: 150px;
+      min-width: 160px;
     }
 
     .stat-card .label {
@@ -261,6 +259,15 @@
       margin-bottom: 8px;
     }
 
+    .date-range-label {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: var(--accent2);
+    }
+
     @media (max-width: 768px) {
       .navbar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
       .main-content { padding: 16px; }
@@ -274,9 +281,9 @@
   <nav class="navbar">
     <a href="https://extraordinary-elf-0e2105.netlify.app/" class="navbar-brand">ACH Link Generator</a>
     <div class="navbar-user">
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/report.html"><font color="#4da6ff">REPORT</font></a></h3>
+      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/report.html"><font color="white">REPORT</font></a></h3>
       <h3><a href="https://extraordinary-elf-0e2105.netlify.app/check.html"><font color="white">MONITOR</font></a></h3>
-      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/YESTERDAY.html"><font color="white">YESTERDAY</font></a></h3>
+      <h3><a href="https://extraordinary-elf-0e2105.netlify.app/YESTERDAY.html"><font color="#4da6ff">YESTERDAY</font></a></h3>
       <span id="userEmail"></span>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -285,17 +292,15 @@
   <div class="main-content">
     <div class="report-header">
       <div>
-        <h1>ACHLYS Daily Summary</h1>
-        <div class="subtitle" id="reportSubtitle">Loading report data...</div>
+        <h1>ACHLYS Delta — Today vs Yesterday</h1>
+        <div class="subtitle" id="reportSubtitle">Loading comparison data...</div>
       </div>
       <div class="upload-area">
-        <select id="dateSelect" style="padding:10px 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;cursor:pointer;" onchange="loadReportByDate()">
-          <option value="">-- Select Date --</option>
+        <select id="todaySelect" onchange="loadDelta()">
+          <option value="">-- Select "Today" Date --</option>
         </select>
-        <button class="upload-btn" style="background:var(--accent2);" onclick="loadReportByDate()">Refresh</button>
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload XLSX</button>
-        <span class="file-name" id="fileName"></span>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+        <span class="date-range-label" id="prevDateLabel">vs —</span>
+        <button class="upload-btn" style="background:var(--accent2);" onclick="loadDelta()">Refresh</button>
       </div>
     </div>
 
@@ -309,9 +314,8 @@
 
     <div class="table-container" id="tableContainer">
       <div class="empty-state" id="emptyState">
-        <h2>Loading Report...</h2>
-        <p>Auto-loading from database. Or upload manually below.</p>
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload XLSX</button>
+        <h2>Loading Delta Report...</h2>
+        <p>Auto-loading latest two dates from database...</p>
       </div>
     </div>
   </div>
@@ -336,28 +340,37 @@
 
     checkAuth();
 
-    // ===== DATA STATE =====
-    let allData = [];
-    let headers = [];
-    let sortCol = -1;
-    let sortAsc = true;
-
-    // ===== AUTO-LOAD FROM SUPABASE =====
+    // ===== CONFIG =====
     const HIDDEN_COLS = ['Agency Fee', 'Total Commission (ZAR)'];
     const BRAND_ALIASES = { 'TICTACBETS': 'TT' };
-    const DB_HEADERS = ['Month','Platform','Source','Campaign Name','GEO','Manager','Brand','Spend','Agency Fee','Real Spend','Installs','Clicks','Reg','FTD','eCPA','Income','Profit','ROI','Total Commission (ZAR)'];
-    const DB_COLS = ['month','platform','source','campaign_name','geo','manager','brand','spend','agency_fee','real_spend','installs','clicks','reg','ftd','ecpa','income','profit','roi','total_commission_zar'];
 
+    const DB_HEADERS = ['Month','Platform','Source','Campaign Name','GEO','Manager','Brand','Spend','Agency Fee','Real Spend','Installs','Clicks','Reg','FTD','eCPA','Income','Profit','ROI','Total Commission (ZAR)'];
+    const DB_COLS    = ['month','platform','source','campaign_name','geo','manager','brand','spend','agency_fee','real_spend','installs','clicks','reg','ftd','ecpa','income','profit','roi','total_commission_zar'];
+
+    // Key columns used to match rows between dates
+    const KEY_COLS   = ['Month','Platform','Source','Campaign Name','GEO','Manager','Brand'];
+    // Numeric columns where we calculate delta
+    const DELTA_COLS = ['Spend','Real Spend','Installs','Clicks','Reg','FTD','eCPA','Income','Profit','ROI'];
+
+    // ===== STATE =====
+    let allDates   = [];
+    let deltaRows  = [];   // computed delta rows
+    let sortCol    = -1;
+    let sortAsc    = true;
+
+    // ===== LOAD AVAILABLE DATES =====
     async function loadAvailableDates() {
       const { data, error } = await sb.from('report_data')
         .select('report_date')
         .order('report_date', { ascending: false });
+
       if (error || !data) return;
 
-      const uniqueDates = [...new Set(data.map(r => r.report_date))];
-      const sel = document.getElementById('dateSelect');
+      allDates = [...new Set(data.map(r => r.report_date))];
+
+      const sel = document.getElementById('todaySelect');
       sel.innerHTML = '';
-      uniqueDates.forEach((d, i) => {
+      allDates.forEach((d, i) => {
         const opt = document.createElement('option');
         opt.value = d;
         opt.textContent = d;
@@ -365,131 +378,105 @@
         sel.appendChild(opt);
       });
 
-      // Auto-load latest date
-      if (uniqueDates.length > 0) {
-        loadReportByDate();
-      }
+      if (allDates.length >= 2) loadDelta();
+      else document.getElementById('reportSubtitle').textContent = 'Need at least 2 dates in database.';
     }
 
-    async function loadReportByDate() {
-      const selectedDate = document.getElementById('dateSelect').value;
-      if (!selectedDate) return;
-
-      document.getElementById('reportSubtitle').textContent = 'Loading...';
-
+    // ===== FETCH ROWS FOR A DATE =====
+    async function fetchDate(date) {
       const { data, error } = await sb.from('report_data')
         .select('*')
-        .eq('report_date', selectedDate)
+        .eq('report_date', date)
         .order('id', { ascending: true });
+      if (error || !data) return [];
+      return data.filter(row => row.month && String(row.month).toUpperCase() !== 'TOTAL');
+    }
 
-      if (error) {
-        document.getElementById('reportSubtitle').textContent = 'Error loading: ' + error.message;
+    // ===== BUILD ROW KEY =====
+    function rowKey(row) {
+      return KEY_COLS.map(h => {
+        const col = DB_COLS[DB_HEADERS.indexOf(h)];
+        return String(row[col] ?? '').trim().toLowerCase();
+      }).join('||');
+    }
+
+    // ===== LOAD DELTA =====
+    async function loadDelta() {
+      const todayDate = document.getElementById('todaySelect').value;
+      if (!todayDate) return;
+
+      // Find the previous date in the list
+      const todayIdx = allDates.indexOf(todayDate);
+      if (todayIdx < 0 || todayIdx >= allDates.length - 1) {
+        document.getElementById('reportSubtitle').textContent = 'No previous date available to compare.';
         return;
       }
+      const prevDate = allDates[todayIdx + 1];
 
-      if (!data || data.length === 0) {
-        document.getElementById('reportSubtitle').textContent = 'No data found for ' + selectedDate;
-        return;
-      }
+      document.getElementById('prevDateLabel').textContent = `vs  ${prevDate}`;
+      document.getElementById('reportSubtitle').textContent = 'Loading...';
 
-      // Set subtitle
-      const subtitle = data[0]?.subtitle || `Report for ${selectedDate}`;
-      document.getElementById('reportSubtitle').textContent = subtitle;
+      const [todayData, prevData] = await Promise.all([
+        fetchDate(todayDate),
+        fetchDate(prevDate)
+      ]);
 
-      // Convert to array format for the table renderer
-      headers = [...DB_HEADERS];
-      allData = data
-        .filter(row => row.month && String(row.month).toUpperCase() !== 'TOTAL')
-        .map(row => DB_COLS.map(col => row[col] ?? ''));
+      // Build lookup map from previous date
+      const prevMap = {};
+      prevData.forEach(row => { prevMap[rowKey(row)] = row; });
+
+      // Compute delta rows
+      deltaRows = todayData.map(tRow => {
+        const key   = rowKey(tRow);
+        const pRow  = prevMap[key] || null;
+        const out   = {};
+
+        DB_HEADERS.forEach((h, idx) => {
+          const col = DB_COLS[idx];
+          if (DELTA_COLS.includes(h)) {
+            const tVal = parseFloat(tRow[col]) || 0;
+            const pVal = pRow ? (parseFloat(pRow[col]) || 0) : 0;
+            out[h] = tVal - pVal;
+          } else {
+            let v = tRow[col] ?? '';
+            if (h === 'Brand' && BRAND_ALIASES[v]) v = BRAND_ALIASES[v];
+            out[h] = v;
+          }
+        });
+
+        out._isNew = !pRow;  // flag: this row has no match in previous date
+        return out;
+      });
+
+      document.getElementById('reportSubtitle').textContent =
+        `Delta: ${todayDate}  →  ${prevDate}`;
 
       buildStats();
-      renderTable(allData);
+      renderTable(deltaRows);
       document.getElementById('searchBox').style.display = 'flex';
       const empty = document.getElementById('emptyState');
       if (empty) empty.remove();
     }
 
-    // Load on page ready
-    loadAvailableDates();
-
-    // ===== EXCEL HANDLING (manual upload fallback) =====
-
-    function handleFile(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      document.getElementById('fileName').textContent = file.name;
-
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        const data = new Uint8Array(ev.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-        // Find header row (row with "Month", "Platform", etc.)
-        let headerIdx = -1;
-        for (let i = 0; i < Math.min(json.length, 10); i++) {
-          const row = json[i];
-          if (row && row.some(c => typeof c === 'string' && (c === 'Month' || c === 'Platform' || c === 'Brand'))) {
-            headerIdx = i;
-            break;
-          }
-        }
-
-        if (headerIdx === -1) {
-          alert('Could not find header row in the file');
-          return;
-        }
-
-        // Extract title/subtitle from rows above header
-        let title = '';
-        let subtitle = '';
-        for (let i = 0; i < headerIdx; i++) {
-          const val = json[i]?.[0];
-          if (val && typeof val === 'string') {
-            if (val.includes('Summary')) title = val;
-            else if (val.includes('Exchange') || val.includes('Date')) subtitle = val;
-          }
-        }
-
-        if (title) document.getElementById('reportSubtitle').textContent = title;
-        if (subtitle) {
-          document.getElementById('reportSubtitle').textContent = subtitle;
-        }
-
-        headers = json[headerIdx].map(h => h || '');
-        allData = json.slice(headerIdx + 1).filter(row => row && row.length > 0 && row.some(c => c !== undefined && c !== ''));
-
-        buildStats();
-        renderTable(allData);
-        document.getElementById('searchBox').style.display = 'flex';
-        document.getElementById('emptyState')?.remove();
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
+    // ===== STATS BAR =====
     function buildStats() {
       const bar = document.getElementById('statsBar');
       bar.style.display = 'flex';
       bar.innerHTML = '';
 
-      const spendIdx = headers.indexOf('Spend');
-      const ftdIdx = headers.indexOf('FTD');
-      const profitIdx = headers.indexOf('Profit');
-      const incomeIdx = headers.indexOf('Income');
+      const sum = (col) => deltaRows.reduce((s, r) => s + (parseFloat(r[col]) || 0), 0);
 
-      const sum = (idx) => {
-        if (idx < 0) return 0;
-        return allData.reduce((s, r) => s + (parseFloat(r[idx]) || 0), 0);
-      };
+      const dSpend  = sum('Spend');
+      const dFTD    = sum('FTD');
+      const dIncome = sum('Income');
+      const dProfit = sum('Profit');
 
       const stats = [
-        { label: 'Total Spend', value: formatNum(sum(spendIdx)), color: 'var(--accent2)' },
-        { label: 'Total FTD', value: Math.round(sum(ftdIdx)).toLocaleString(), color: 'var(--accent)' },
-        { label: 'Total Income', value: formatNum(sum(incomeIdx)), color: 'var(--success)' },
-        { label: 'Total Profit', value: formatNum(sum(profitIdx)), color: sum(profitIdx) >= 0 ? 'var(--success)' : 'var(--accent)' },
-        { label: 'Rows', value: allData.length, color: 'var(--text-primary)' },
+        { label: 'Δ Spend',  value: fmtDelta(dSpend),            color: dSpend  >= 0 ? 'var(--success)' : 'var(--accent)' },
+        { label: 'Δ FTD',    value: fmtDeltaInt(dFTD),           color: dFTD    >= 0 ? 'var(--success)' : 'var(--accent)' },
+        { label: 'Δ Income', value: fmtDelta(dIncome),           color: dIncome >= 0 ? 'var(--success)' : 'var(--accent)' },
+        { label: 'Δ Profit', value: fmtDelta(dProfit),           color: dProfit >= 0 ? 'var(--success)' : 'var(--accent)' },
+        { label: 'Rows',     value: deltaRows.length,            color: 'var(--text-primary)' },
       ];
 
       stats.forEach(s => {
@@ -500,46 +487,41 @@
       });
     }
 
-    function formatNum(n) {
-      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
+    // ===== RENDER TABLE =====
     function renderTable(data) {
       const container = document.getElementById('tableContainer');
-      document.getElementById('rowCount').textContent = `Showing ${data.length} of ${allData.length} rows`;
+      document.getElementById('rowCount').textContent = `Showing ${data.length} of ${deltaRows.length} rows`;
 
       let html = '<table><thead><tr>';
-      headers.forEach((h, i) => {
+      DB_HEADERS.forEach((h, i) => {
         if (HIDDEN_COLS.includes(h)) return;
         const arrow = sortCol === i ? (sortAsc ? ' ▲' : ' ▼') : '';
-        html += `<th onclick="sortTable(${i})">${h}<span class="sort-arrow">${arrow}</span></th>`;
+        const isDelta = DELTA_COLS.includes(h);
+        const label = isDelta ? `Δ ${h}` : h;
+        html += `<th onclick="sortTable(${i})">${label}<span class="sort-arrow">${arrow}</span></th>`;
       });
       html += '</tr></thead><tbody>';
 
       data.forEach(row => {
-        html += '<tr>';
-        headers.forEach((h, i) => {
+        const isNew = row._isNew;
+        html += `<tr${isNew ? ' style="opacity:0.75;"' : ''}>`;
+        DB_HEADERS.forEach((h, i) => {
           if (HIDDEN_COLS.includes(h)) return;
-          let val = row[i] !== undefined ? row[i] : '';
+          let val = row[h] !== undefined ? row[h] : '';
           let cls = '';
 
-          // Apply brand aliases
-          if (h === 'Brand' && BRAND_ALIASES[val]) val = BRAND_ALIASES[val];
+          if (DELTA_COLS.includes(h)) {
+            const n = parseFloat(val) || 0;
+            if (n > 0)      cls = 'num-positive';
+            else if (n < 0) cls = 'num-negative';
+            else             cls = 'num-zero';
 
-          // Color code numeric values
-          if (typeof val === 'number') {
-            if (h === 'Profit' || h === 'ROI') {
-              cls = val >= 0 ? 'num-positive' : 'num-negative';
-            }
-            // Format numbers
             if (h === 'ROI') {
-              val = (val * 100).toFixed(1) + '%';
-            } else if (['Spend', 'Real Spend', 'Income', 'Profit', 'eCPA'].includes(h)) {
-              val = formatNum(val);
-            } else if (Number.isInteger(val)) {
-              val = val.toLocaleString();
+              val = (n >= 0 ? '+' : '') + (n * 100).toFixed(1) + '%';
+            } else if (['Spend','Real Spend','Income','Profit','eCPA'].includes(h)) {
+              val = (n >= 0 ? '+' : '') + formatNum(n);
             } else {
-              val = formatNum(val);
+              val = (n >= 0 ? '+' : '') + Math.round(n).toLocaleString();
             }
           }
 
@@ -552,22 +534,17 @@
       container.innerHTML = html;
     }
 
+    // ===== SORT =====
     function sortTable(colIdx) {
-      if (sortCol === colIdx) {
-        sortAsc = !sortAsc;
-      } else {
-        sortCol = colIdx;
-        sortAsc = true;
-      }
+      const h = DB_HEADERS[colIdx];
+      if (sortCol === colIdx) sortAsc = !sortAsc;
+      else { sortCol = colIdx; sortAsc = true; }
 
-      allData.sort((a, b) => {
-        let va = a[colIdx] ?? '';
-        let vb = b[colIdx] ?? '';
-
-        if (typeof va === 'number' && typeof vb === 'number') {
+      deltaRows.sort((a, b) => {
+        let va = a[h] ?? '';
+        let vb = b[h] ?? '';
+        if (typeof va === 'number' && typeof vb === 'number')
           return sortAsc ? va - vb : vb - va;
-        }
-
         va = String(va).toLowerCase();
         vb = String(vb).toLowerCase();
         return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
@@ -576,18 +553,29 @@
       filterTable();
     }
 
+    // ===== FILTER =====
     function filterTable() {
       const q = document.getElementById('searchInput').value.toLowerCase();
-      if (!q) {
-        renderTable(allData);
-        return;
-      }
-
-      const filtered = allData.filter(row =>
-        row.some(cell => String(cell).toLowerCase().includes(q))
+      if (!q) { renderTable(deltaRows); return; }
+      const filtered = deltaRows.filter(row =>
+        Object.values(row).some(v => String(v).toLowerCase().includes(q))
       );
       renderTable(filtered);
     }
+
+    // ===== HELPERS =====
+    function formatNum(n) {
+      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function fmtDelta(n) {
+      return (n >= 0 ? '+' : '') + formatNum(n);
+    }
+    function fmtDeltaInt(n) {
+      return (n >= 0 ? '+' : '') + Math.round(n).toLocaleString();
+    }
+
+    // ===== INIT =====
+    loadAvailableDates();
   </script>
 
 </body>
