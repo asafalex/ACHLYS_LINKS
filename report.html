@@ -176,7 +176,7 @@
       text-align: left;
       color: var(--accent2);
       font-weight: 600;
-      font-size: 12px;
+      font-size: 7px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border-bottom: 2px solid var(--border);
@@ -342,6 +342,8 @@
     let sortAsc = true;
 
     // ===== AUTO-LOAD FROM SUPABASE =====
+    const HIDDEN_COLS = ['Agency Fee', 'Total Commission (ZAR)'];
+    const BRAND_ALIASES = { 'TICTACBETS': 'TT' };
     const DB_HEADERS = ['Month','Platform','Source','Campaign Name','GEO','Manager','Brand','Spend','Agency Fee','Real Spend','Installs','Clicks','Reg','FTD','eCPA','Income','Profit','ROI','Total Commission (ZAR)'];
     const DB_COLS = ['month','platform','source','campaign_name','geo','manager','brand','spend','agency_fee','real_spend','installs','clicks','reg','ftd','ecpa','income','profit','roi','total_commission_zar'];
 
@@ -507,6 +509,7 @@
 
       let html = '<table><thead><tr>';
       headers.forEach((h, i) => {
+        if (HIDDEN_COLS.includes(h)) return;
         const arrow = sortCol === i ? (sortAsc ? ' ▲' : ' ▼') : '';
         html += `<th onclick="sortTable(${i})">${h}<span class="sort-arrow">${arrow}</span></th>`;
       });
@@ -515,8 +518,12 @@
       data.forEach(row => {
         html += '<tr>';
         headers.forEach((h, i) => {
+          if (HIDDEN_COLS.includes(h)) return;
           let val = row[i] !== undefined ? row[i] : '';
           let cls = '';
+
+          // Apply brand aliases
+          if (h === 'Brand' && BRAND_ALIASES[val]) val = BRAND_ALIASES[val];
 
           // Color code numeric values
           if (typeof val === 'number') {
@@ -526,7 +533,7 @@
             // Format numbers
             if (h === 'ROI') {
               val = (val * 100).toFixed(1) + '%';
-            } else if (['Spend', 'Agency Fee', 'Real Spend', 'Income', 'Profit', 'eCPA', 'Total Commission (ZAR)'].includes(h)) {
+            } else if (['Spend', 'Real Spend', 'Income', 'Profit', 'eCPA'].includes(h)) {
               val = formatNum(val);
             } else if (Number.isInteger(val)) {
               val = val.toLocaleString();
