@@ -6,7 +6,12 @@ Run daily via Windows Task Scheduler or manually.
 
 import base64
 import os
+import re
 import sys
+
+# Force UTF-8 output on Windows to handle special characters in subtitles
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import tempfile
 from datetime import date
 from openpyxl import load_workbook
@@ -174,8 +179,11 @@ def parse_excel(filepath):
     headers = {}
     for cell in header_row:
         val = str(cell.value).strip() if cell.value else ""
-        if val in COL_MAP:
-            headers[cell.column - 1] = COL_MAP[val]
+        # Normalize: strip parenthetical suffixes like "(€)", "(ZAR)", etc.
+        val_normalized = re.sub(r'\s*\(.*?\)\s*$', '', val).strip()
+        key = val if val in COL_MAP else val_normalized
+        if key in COL_MAP:
+            headers[cell.column - 1] = COL_MAP[key]
 
     # Parse data rows
     rows = []
@@ -189,7 +197,7 @@ def parse_excel(filepath):
         # Skip empty rows and TOTAL row
         if not row or not any(row):
             continue
-        if row[0] and str(row[0]).strip().upper() == 'TOTAL':
+        if any(v and str(v).strip().upper() == 'TOTAL' for v in row):
             continue
 
         record = {"report_date": date.today().isoformat(), "subtitle": subtitle}
@@ -222,14 +230,18 @@ def parse_excel(filepath):
     return rows, subtitle
 
 
-def upload_to_supabase(rows):
-    """Upload rows to Supabase, replacing today's data."""
+def upload_to_supabase(rows, report_date_str=None):
+    """Upload rows to Supabase, replacing data for the given date."""
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
-    today_str = date.today().isoformat()
+    date_str = report_date_str or date.today().isoformat()
 
-    # Delete existing data for today
-    print(f"Deleting old data for {today_str}...")
-    sb.table("report_data").delete().eq("report_date", today_str).execute()
+    # Update report_date in all rows to the correct date
+    for row in rows:
+        row["report_date"] = date_str
+
+    # Delete existing data for this date
+    print(f"Deleting old data for {date_str}...")
+    sb.table("report_data").delete().eq("report_date", date_str).execute()
 
     # Insert new data in batches of 50
     batch_size = 50
@@ -238,7 +250,7 @@ def upload_to_supabase(rows):
         result = sb.table("report_data").insert(batch).execute()
         print(f"  Uploaded rows {i + 1} to {min(i + batch_size, len(rows))}")
 
-    print(f"SUCCESS: {len(rows)} rows uploaded for {today_str}")
+    print(f"SUCCESS: {len(rows)} rows uploaded for {date_str}")
 
 
 def main():
@@ -248,11 +260,17 @@ def main():
     print("=" * 50)
 
     # Allow custom file path as argument
+    report_date_str = None
     if len(sys.argv) > 1:
         filepath = sys.argv[1]
         if not os.path.exists(filepath):
             print(f"ERROR: File not found: {filepath}")
             return
+        # Extract date from filename pattern ACHLYS_Summary_YYYY-MM-DD.xlsx
+        m = re.search(r'(\d{4}-\d{2}-\d{2})', os.path.basename(filepath))
+        if m:
+            report_date_str = m.group(1)
+            print(f"Date from filename: {report_date_str}")
         print(f"File: {filepath}")
         print("Parsing Excel...")
         rows, subtitle = parse_excel(filepath)
@@ -301,7 +319,7 @@ def main():
     if subtitle:
         print(f"Subtitle: {subtitle[:80]}...")
 
-    upload_to_supabase(rows)
+    upload_to_supabase(rows, report_date_str)
     print("Done!")
 
 
