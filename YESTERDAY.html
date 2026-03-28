@@ -452,6 +452,14 @@
         fetchDate(prevDate)
       ]);
 
+      // Store raw totals for stats bar (always correct, independent of row matching)
+      const rawSum = (rows, colName) => {
+        const col = DB_COLS[DB_HEADERS.indexOf(colName)];
+        return rows.reduce((s, r) => s + (parseFloat(r[col]) || 0), 0);
+      };
+      window._todayTotals = { Spend: rawSum(todayData,'Spend'), FTD: rawSum(todayData,'FTD'), Income: rawSum(todayData,'Income'), Profit: rawSum(todayData,'Profit') };
+      window._prevTotals  = { Spend: rawSum(prevData,'Spend'),  FTD: rawSum(prevData,'FTD'),  Income: rawSum(prevData,'Income'),  Profit: rawSum(prevData,'Profit') };
+
       // Build lookup map from previous date
       const prevMap = {};
       prevData.forEach(row => { prevMap[rowKey(row)] = row; });
@@ -495,12 +503,13 @@
       bar.style.display = 'flex';
       bar.innerHTML = '';
 
-      const sum = (col) => deltaRows.reduce((s, r) => s + (parseFloat(r[col]) || 0), 0);
+      const t = window._todayTotals || {};
+      const p = window._prevTotals  || {};
 
-      const dSpend  = sum('Spend');
-      const dFTD    = sum('FTD');
-      const dIncome = sum('Income');
-      const dProfit = sum('Profit');
+      const dSpend  = (t.Spend  || 0) - (p.Spend  || 0);
+      const dFTD    = (t.FTD    || 0) - (p.FTD    || 0);
+      const dIncome = (t.Income || 0) - (p.Income || 0);
+      const dProfit = (t.Profit || 0) - (p.Profit || 0);
 
       const stats = [
         { label: 'Δ Spend',  value: fmtDelta(dSpend),            color: dSpend  >= 0 ? 'var(--success)' : 'var(--accent)' },
