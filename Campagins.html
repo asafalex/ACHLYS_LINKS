@@ -334,10 +334,11 @@
             <th onclick="sortBy('campagin')" data-col="campagin">Campaign<span class="sort-icon"></span></th>
             <th onclick="sortBy('Country')" data-col="Country">Country<span class="sort-icon"></span></th>
             <th onclick="sortBy('Brand')" data-col="Brand">Brand<span class="sort-icon"></span></th>
+            <th onclick="sortBy('fb_campaign_id')" data-col="fb_campaign_id">FB Campaign ID<span class="sort-icon"></span></th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="7"><div class="empty-state"><h2 class="loading-dots">Loading</h2></div></td></tr>
+          <tr><td colspan="8"><div class="empty-state"><h2 class="loading-dots">Loading</h2></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -375,7 +376,7 @@
 
       if (error) {
         document.getElementById('tableBody').innerHTML =
-          `<tr><td colspan="7"><div class="empty-state"><h2>Error loading data</h2><p>${error.message}</p></div></td></tr>`;
+          `<tr><td colspan="8"><div class="empty-state"><h2>Error loading data</h2><p>${error.message}</p></div></td></tr>`;
         document.getElementById('pageSubtitle').textContent = 'Failed to load';
         return;
       }
@@ -385,7 +386,7 @@
       if (allRows.length === 0) {
         document.getElementById('pageSubtitle').textContent = '0 rows — RLS policy may be missing';
         document.getElementById('tableBody').innerHTML = `
-          <tr><td colspan="7">
+          <tr><td colspan="8">
             <div class="empty-state">
               <h2>No data returned</h2>
               <p style="margin-top:8px;">The table is empty <strong>or</strong> a Supabase RLS policy is blocking reads.</p>
@@ -447,7 +448,7 @@
         if (platform && r.Platform !== platform) return false;
         if (ach      && r.ACH_code !== ach)      return false;
         if (q) {
-          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.source, r.id]
+          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.source, r.fb_campaign_id, r.id]
             .join(' ').toLowerCase();
           if (!haystack.includes(q)) return false;
         }
@@ -501,7 +502,7 @@
     function renderTable(rows) {
       const tbody = document.getElementById('tableBody');
       if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><h2>No results</h2><p>Try adjusting your search or filters.</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><h2>No results</h2><p>Try adjusting your search or filters.</p></div></td></tr>`;
         return;
       }
 
@@ -514,6 +515,7 @@
           <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;">${r.campagin ?? '—'}</td>
           <td><span class="badge badge-country">${r.Country ?? '—'}</span></td>
           <td><span class="badge badge-brand">${r.Brand ?? '—'}</span></td>
+          <td style="font-family:'Courier New',monospace;font-size:12px;color:var(--text-secondary);">${r.fb_campaign_id ?? '—'}</td>
         </tr>
       `).join('');
     }
