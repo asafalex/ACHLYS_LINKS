@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campaigns - ACH</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0f0f0f;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-input: #1a1a2e;
+      --accent: #e94560;
+      --accent-hover: #ff6b81;
+      --accent2: #4da6ff;
+      --text-primary: #eee;
+      --text-secondary: #a0a0b0;
+      --border: #2a2a4a;
+      --success: #00d68f;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ===== NAVBAR ===== */
+    .navbar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 56px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .navbar-brand {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 1px;
+    }
+
+    .nav-links { display: flex; gap: 2px; align-items: center; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .nav-link:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .nav-link.active { background: rgba(77,166,255,0.12); color: var(--accent2); }
+    .nav-link svg { flex-shrink: 0; opacity: 0.85; }
+    .nav-link.active svg { opacity: 1; }
+
+    .navbar-right { display: flex; align-items: center; gap: 12px; }
+    .navbar-right span { color: var(--text-secondary); font-size: 13px; }
+
+    .btn-logout {
+      padding: 7px 16px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ===== MAIN ===== */
+    .main-content { padding: 24px; }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .page-header h1 { font-size: 24px; color: var(--accent); }
+    .page-header .subtitle { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+
+    /* ===== SEARCH ===== */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 10px 16px 10px 38px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .search-wrap input::placeholder { color: var(--text-secondary); }
+    .search-wrap input:focus { outline: none; border-color: var(--accent2); }
+
+    .filter-select {
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .filter-select:focus { outline: none; border-color: var(--accent2); }
+
+    .row-count {
+      color: var(--text-secondary);
+      font-size: 13px;
+      padding: 4px 0 12px;
+    }
+
+    /* ===== TABLE ===== */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    thead tr {
+      background: var(--bg-secondary);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      color: var(--accent2);
+      font-weight: 600;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    th:hover { color: var(--text-primary); }
+
+    th .sort-icon { margin-left: 4px; opacity: 0.4; }
+    th.sorted-asc .sort-icon::after { content: ' ▲'; opacity: 1; }
+    th.sorted-desc .sort-icon::after { content: ' ▼'; opacity: 1; }
+
+    td {
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(42,42,74,0.6);
+      color: var(--text-primary);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(77,166,255,0.04); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-platform {
+      background: rgba(77,166,255,0.15);
+      color: var(--accent2);
+    }
+
+    .badge-country {
+      background: rgba(0,214,143,0.12);
+      color: var(--success);
+    }
+
+    .badge-brand {
+      background: rgba(233,69,96,0.12);
+      color: var(--accent-hover);
+    }
+
+    .ach-code {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #b8a9ff;
+      background: rgba(184,169,255,0.08);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .date-cell { color: var(--text-secondary); font-size: 12px; }
+
+    /* ===== EMPTY / LOADING ===== */
+    .empty-state {
+      padding: 60px 24px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    .empty-state h2 { font-size: 18px; margin-bottom: 8px; color: var(--text-primary); }
+
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
+
+    @media (max-width: 600px) {
+      .navbar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; height: auto; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .search-wrap { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="https://extraordinary-elf-0e2105.netlify.app/" class="navbar-brand">ACH</a>
+    <div class="nav-links">
+      <a href="https://extraordinary-elf-0e2105.netlify.app/report.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+        Report
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/check.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Monitor
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/YESTERDAY.html" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Yesterday
+      </a>
+      <a href="https://extraordinary-elf-0e2105.netlify.app/Campagins.html" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M3 10h18v4H3z"/><path d="M3 17h18v4H3z"/></svg>
+        Campaigns
+      </a>
+    </div>
+    <div class="navbar-right">
+      <span id="userEmail"></span>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1>Campaigns per Brand</h1>
+        <div class="subtitle" id="pageSubtitle">Loading data…</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Search campaigns, brand, country…" oninput="applyFilters()">
+      </div>
+      <select class="filter-select" id="brandFilter" onchange="applyFilters()">
+        <option value="">All Brands</option>
+      </select>
+      <select class="filter-select" id="countryFilter" onchange="applyFilters()">
+        <option value="">All Countries</option>
+      </select>
+      <select class="filter-select" id="platformFilter" onchange="applyFilters()">
+        <option value="">All Platforms</option>
+      </select>
+    </div>
+
+    <div class="row-count" id="rowCount"></div>
+
+    <div class="table-container">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th onclick="sortBy('id')" data-col="id">#<span class="sort-icon"></span></th>
+            <th onclick="sortBy('created_at')" data-col="created_at">Date<span class="sort-icon"></span></th>
+            <th onclick="sortBy('ACH_code')" data-col="ACH_code">ACH Code<span class="sort-icon"></span></th>
+            <th onclick="sortBy('campagin')" data-col="campagin">Campaign<span class="sort-icon"></span></th>
+            <th onclick="sortBy('Brand')" data-col="Brand">Brand<span class="sort-icon"></span></th>
+            <th onclick="sortBy('Country')" data-col="Country">Country<span class="sort-icon"></span></th>
+            <th onclick="sortBy('Platform')" data-col="Platform">Platform<span class="sort-icon"></span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="7"><div class="empty-state"><h2 class="loading-dots">Loading</h2></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    const SUPABASE_URL = 'https://exrmnluywpzbhqjngjfz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4cm1ubHV5d3B6Ymhxam5namZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNzY2MjMsImV4cCI6MjA4OTg1MjYyM30.DNqpguiybLmt0Oz8PMGRcx_U6dMpAMt7fkdKSDal5d8';
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== AUTH =====
+    async function checkAuth() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = 'index.html'; return; }
+      document.getElementById('userEmail').textContent = session.user.email;
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+
+    // ===== STATE =====
+    let allRows = [];
+    let sortCol = 'created_at';
+    let sortAsc = false;
+
+    // ===== LOAD DATA =====
+    async function loadData() {
+      const { data, error } = await sb
+        .from('campaign_per_brand')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        document.getElementById('tableBody').innerHTML =
+          `<tr><td colspan="7"><div class="empty-state"><h2>Error loading data</h2><p>${error.message}</p></div></td></tr>`;
+        document.getElementById('pageSubtitle').textContent = 'Failed to load';
+        return;
+      }
+
+      allRows = data || [];
+      document.getElementById('pageSubtitle').textContent =
+        `${allRows.length} total rows · campaign_per_brand`;
+
+      populateFilters();
+      applyFilters();
+    }
+
+    // ===== FILTERS =====
+    function populateFilters() {
+      const brands    = [...new Set(allRows.map(r => r.Brand).filter(Boolean))].sort();
+      const countries = [...new Set(allRows.map(r => r.Country).filter(Boolean))].sort();
+      const platforms = [...new Set(allRows.map(r => r.Platform).filter(Boolean))].sort();
+
+      fillSelect('brandFilter',    brands);
+      fillSelect('countryFilter',  countries);
+      fillSelect('platformFilter', platforms);
+    }
+
+    function fillSelect(id, values) {
+      const el = document.getElementById(id);
+      const current = el.value;
+      // keep first "All" option
+      while (el.options.length > 1) el.remove(1);
+      values.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        el.appendChild(opt);
+      });
+      if (current) el.value = current;
+    }
+
+    function applyFilters() {
+      const q        = document.getElementById('searchInput').value.toLowerCase().trim();
+      const brand    = document.getElementById('brandFilter').value;
+      const country  = document.getElementById('countryFilter').value;
+      const platform = document.getElementById('platformFilter').value;
+
+      let rows = allRows.filter(r => {
+        if (brand    && r.Brand    !== brand)    return false;
+        if (country  && r.Country  !== country)  return false;
+        if (platform && r.Platform !== platform) return false;
+        if (q) {
+          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.id]
+            .join(' ').toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+
+      rows = sortRows(rows);
+      renderTable(rows);
+      document.getElementById('rowCount').textContent =
+        rows.length === allRows.length
+          ? `Showing all ${rows.length} rows`
+          : `Showing ${rows.length} of ${allRows.length} rows`;
+    }
+
+    // ===== SORT =====
+    function sortBy(col) {
+      if (sortCol === col) { sortAsc = !sortAsc; }
+      else { sortCol = col; sortAsc = true; }
+
+      document.querySelectorAll('th').forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+        if (th.dataset.col === col) {
+          th.classList.add(sortAsc ? 'sorted-asc' : 'sorted-desc');
+        }
+      });
+
+      applyFilters();
+    }
+
+    function sortRows(rows) {
+      return [...rows].sort((a, b) => {
+        let av = a[sortCol] ?? '';
+        let bv = b[sortCol] ?? '';
+        if (typeof av === 'number' && typeof bv === 'number') {
+          return sortAsc ? av - bv : bv - av;
+        }
+        av = String(av).toLowerCase();
+        bv = String(bv).toLowerCase();
+        return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    }
+
+    // ===== RENDER =====
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+        + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('tableBody');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><h2>No results</h2><p>Try adjusting your search or filters.</p></div></td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td style="color:var(--text-secondary);font-size:12px;">${r.id}</td>
+          <td class="date-cell">${formatDate(r.created_at)}</td>
+          <td><span class="ach-code">${r.ACH_code ?? '—'}</span></td>
+          <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;">${r.campagin ?? '—'}</td>
+          <td><span class="badge badge-brand">${r.Brand ?? '—'}</span></td>
+          <td><span class="badge badge-country">${r.Country ?? '—'}</span></td>
+          <td><span class="badge badge-platform">${r.Platform ?? '—'}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // ===== INIT =====
+    checkAuth().then(() => loadData());
+  </script>
+</body>
+</html>
