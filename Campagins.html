@@ -316,6 +316,9 @@
       <select class="filter-select" id="platformFilter" onchange="applyFilters()">
         <option value="">All Platforms</option>
       </select>
+      <select class="filter-select" id="achFilter" onchange="applyFilters()">
+        <option value="">All ACH Codes</option>
+      </select>
     </div>
 
     <div class="row-count" id="rowCount"></div>
@@ -409,10 +412,12 @@
       const brands    = [...new Set(allRows.map(r => r.Brand).filter(Boolean))].sort();
       const countries = [...new Set(allRows.map(r => r.Country).filter(Boolean))].sort();
       const platforms = [...new Set(allRows.map(r => r.Platform).filter(Boolean))].sort();
+      const achCodes  = [...new Set(allRows.map(r => r.ACH_code).filter(Boolean))].sort();
 
       fillSelect('brandFilter',    brands);
       fillSelect('countryFilter',  countries);
       fillSelect('platformFilter', platforms);
+      fillSelect('achFilter',      achCodes);
     }
 
     function fillSelect(id, values) {
@@ -434,11 +439,13 @@
       const brand    = document.getElementById('brandFilter').value;
       const country  = document.getElementById('countryFilter').value;
       const platform = document.getElementById('platformFilter').value;
+      const ach      = document.getElementById('achFilter').value;
 
       let rows = allRows.filter(r => {
         if (brand    && r.Brand    !== brand)    return false;
         if (country  && r.Country  !== country)  return false;
         if (platform && r.Platform !== platform) return false;
+        if (ach      && r.ACH_code !== ach)      return false;
         if (q) {
           const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.source, r.id]
             .join(' ').toLowerCase();
