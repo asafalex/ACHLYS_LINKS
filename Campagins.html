@@ -331,10 +331,11 @@
             <th onclick="sortBy('Brand')" data-col="Brand">Brand<span class="sort-icon"></span></th>
             <th onclick="sortBy('Country')" data-col="Country">Country<span class="sort-icon"></span></th>
             <th onclick="sortBy('Platform')" data-col="Platform">Platform<span class="sort-icon"></span></th>
+            <th onclick="sortBy('Source')" data-col="Source">Source<span class="sort-icon"></span></th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="7"><div class="empty-state"><h2 class="loading-dots">Loading</h2></div></td></tr>
+          <tr><td colspan="8"><div class="empty-state"><h2 class="loading-dots">Loading</h2></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -372,7 +373,7 @@
 
       if (error) {
         document.getElementById('tableBody').innerHTML =
-          `<tr><td colspan="7"><div class="empty-state"><h2>Error loading data</h2><p>${error.message}</p></div></td></tr>`;
+          `<tr><td colspan="8"><div class="empty-state"><h2>Error loading data</h2><p>${error.message}</p></div></td></tr>`;
         document.getElementById('pageSubtitle').textContent = 'Failed to load';
         return;
       }
@@ -382,7 +383,7 @@
       if (allRows.length === 0) {
         document.getElementById('pageSubtitle').textContent = '0 rows — RLS policy may be missing';
         document.getElementById('tableBody').innerHTML = `
-          <tr><td colspan="7">
+          <tr><td colspan="8">
             <div class="empty-state">
               <h2>No data returned</h2>
               <p style="margin-top:8px;">The table is empty <strong>or</strong> a Supabase RLS policy is blocking reads.</p>
@@ -440,7 +441,7 @@
         if (country  && r.Country  !== country)  return false;
         if (platform && r.Platform !== platform) return false;
         if (q) {
-          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.id]
+          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.Source, r.id]
             .join(' ').toLowerCase();
           if (!haystack.includes(q)) return false;
         }
@@ -494,7 +495,7 @@
     function renderTable(rows) {
       const tbody = document.getElementById('tableBody');
       if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><h2>No results</h2><p>Try adjusting your search or filters.</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><h2>No results</h2><p>Try adjusting your search or filters.</p></div></td></tr>`;
         return;
       }
 
@@ -507,6 +508,7 @@
           <td><span class="badge badge-brand">${r.Brand ?? '—'}</span></td>
           <td><span class="badge badge-country">${r.Country ?? '—'}</span></td>
           <td><span class="badge badge-platform">${r.Platform ?? '—'}</span></td>
+          <td><span class="badge" style="background:rgba(255,193,7,0.12);color:#ffc107;">${r.Source ?? '—'}</span></td>
         </tr>
       `).join('');
     }
