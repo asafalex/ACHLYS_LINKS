@@ -331,7 +331,7 @@
             <th onclick="sortBy('Brand')" data-col="Brand">Brand<span class="sort-icon"></span></th>
             <th onclick="sortBy('Country')" data-col="Country">Country<span class="sort-icon"></span></th>
             <th onclick="sortBy('Platform')" data-col="Platform">Platform<span class="sort-icon"></span></th>
-            <th onclick="sortBy('Source')" data-col="Source">Source<span class="sort-icon"></span></th>
+            <th onclick="sortBy('source')" data-col="source">Source<span class="sort-icon"></span></th>
           </tr>
         </thead>
         <tbody id="tableBody">
@@ -441,7 +441,7 @@
         if (country  && r.Country  !== country)  return false;
         if (platform && r.Platform !== platform) return false;
         if (q) {
-          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.Source, r.id]
+          const haystack = [r.ACH_code, r.campagin, r.Brand, r.Country, r.Platform, r.source, r.id]
             .join(' ').toLowerCase();
           if (!haystack.includes(q)) return false;
         }
@@ -508,7 +508,7 @@
           <td><span class="badge badge-brand">${r.Brand ?? '—'}</span></td>
           <td><span class="badge badge-country">${r.Country ?? '—'}</span></td>
           <td><span class="badge badge-platform">${r.Platform ?? '—'}</span></td>
-          <td><span class="badge" style="background:rgba(255,193,7,0.12);color:#ffc107;">${r.Source ?? '—'}</span></td>
+          <td><span class="badge" style="background:rgba(255,193,7,0.12);color:#ffc107;">${r.source ?? '—'}</span></td>
         </tr>
       `).join('');
     }
