@@ -378,6 +378,25 @@
       }
 
       allRows = data || [];
+
+      if (allRows.length === 0) {
+        document.getElementById('pageSubtitle').textContent = '0 rows — RLS policy may be missing';
+        document.getElementById('tableBody').innerHTML = `
+          <tr><td colspan="7">
+            <div class="empty-state">
+              <h2>No data returned</h2>
+              <p style="margin-top:8px;">The table is empty <strong>or</strong> a Supabase RLS policy is blocking reads.</p>
+              <p style="margin-top:12px;font-size:12px;background:#1a1a2e;padding:12px 16px;border-radius:8px;text-align:left;display:inline-block;line-height:1.8;">
+                Run in <a href="https://app.supabase.com/project/exrmnluywpzbhqjngjfz/sql" target="_blank" style="color:var(--accent2);">Supabase SQL Editor</a>:<br>
+                <code style="color:#b8a9ff;">CREATE POLICY "Allow authenticated users to read"<br>
+                ON public.campaign_per_brand FOR SELECT<br>
+                TO authenticated USING (true);</code>
+              </p>
+            </div>
+          </td></tr>`;
+        return;
+      }
+
       document.getElementById('pageSubtitle').textContent =
         `${allRows.length} total rows · campaign_per_brand`;
 
